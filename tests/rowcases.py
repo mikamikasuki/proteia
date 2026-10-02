@@ -99,6 +99,7 @@ def synthetic_row(
     y_jitter: float = 1.0,
     w_var: float = 0.08,
     h_var: float = 0.10,
+    noise_sigma: float = NOISE_SIGMA,
 ) -> RowCase:
     """One bench51 row: ``n`` lanes at ``pitch`` (or the steps ``pitches``), bands
     about ``w`` x ``h`` px (the 20% extents), ``missing`` lanes empty. ``smile``
@@ -145,7 +146,7 @@ def synthetic_row(
         fy = np.exp(-0.5 * ((ys - lane_cy[i]) / sy) ** 2)
         depth_map += depths[i] * np.outer(fy, fx)
         reference[i] = all_refs[i]
-    noise = rng.normal(0.0, NOISE_SIGMA, bg.shape)
+    noise = rng.normal(0.0, noise_sigma, bg.shape)
     image = np.round(np.clip(bg - depth_map + noise, 0.0, FULL_SCALE))
     if light_on_dark:
         image = FULL_SCALE - image

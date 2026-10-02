@@ -229,6 +229,8 @@ PITCH_STEPS: Final = (0.05, 0.01)  # coarse step over PITCH_RANGE, then the fine
 PITCH_REFINE: Final = 0.04  # ...within +/- this of the best coarse fraction
 AMBIGUITY_MARGIN: Final = 4.0  # a different lane reading this close in cost is ambiguous
 TAIL_Q: Final = 97.5  # stage-2 noise also from this percentile of |deviation| (heavy tails)
+STAGE1_NOISE_CAP: Final = 1.5  # stage 1 is capped by the independent white-noise floor...
+STAGE1_NOISE_MIN_PX: Final = 1000.0  # ...only when pixel noise makes spread inflation material
 BG_CLIP_K: Final = 3.0  # robust fits keep values within this many sigmas of the centre
 BG_ITER: Final = 30  # iteration cap of the robust fits
 BG_MIN_KEEP: Final = 0.10  # a plane fit keeps this fraction; stage 2 needs it of the crop
@@ -671,6 +673,12 @@ def _signal(
         off2, s2 = _center_scale(r.ravel()[idx], sfloor, tail=False)
         if s2 < tol * sigma_sm:
             sigma_sm, offset = s2, off2
+        # Bands in a tight crop can dominate both robust spreads and inflate
+        # the threshold enough to hide themselves. Stage 1 only bootstraps the
+        # band mask; cap its estimate by the independently measured white-noise
+        # floor, then let stage 2 refine it from the band-free pixels.
+        if sigma_px >= STAGE1_NOISE_MIN_PX:
+            sigma_sm = min(sigma_sm, STAGE1_NOISE_CAP * sfloor)
     else:
         idx = _subsample(np.flatnonzero(free.ravel()))
         offset, sigma_sm = _center_scale(r.ravel()[idx], sfloor)
@@ -2646,6 +2654,8 @@ def settings() -> dict[str, JsonValue]:
         "pitch_refine": PITCH_REFINE,
         "ambiguity_margin": AMBIGUITY_MARGIN,
         "tail_q": TAIL_Q,
+        "stage1_noise_cap": STAGE1_NOISE_CAP,
+        "stage1_noise_min_px": STAGE1_NOISE_MIN_PX,
         "bg_clip_k": BG_CLIP_K,
         "bg_iter": BG_ITER,
         "bg_min_keep": BG_MIN_KEEP,

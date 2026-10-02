@@ -164,6 +164,28 @@ def test_all_lanes_present():
     assert found.size == BoxSize(width=44, height=12)  # the bands' 30% extent
 
 
+@pytest.mark.parametrize("seed", [1000, 1008])
+def test_high_noise_tight_crop_still_finds_bands(seed):
+    # A tight box leaves little membrane around the bands. At high noise, the
+    # bands inflate stage 1's spread estimate and can otherwise hide themselves.
+    case = synthetic_row(
+        "high-noise tight crop",
+        "high-noise tight crop regression",
+        seed,
+        mx=-4,
+        my=1,
+        noise_sigma=6400.0,
+    )
+    found = detect_row(
+        case.image,
+        case.row,
+        case.n_lanes,
+        background=MEMBRANE,
+        dark_on_light=case.dark_on_light,
+    )
+    assert all(lane.rect is not None for lane in found.lanes)
+
+
 @pytest.mark.parametrize(
     ("name", "missing"),
     [
